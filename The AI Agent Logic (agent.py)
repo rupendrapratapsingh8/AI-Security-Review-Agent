@@ -1,0 +1,83 @@
+# agent.py
+import re
+import ast
+
+class SecurityReviewAgent:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.findings = []
+        
+        # Define common heuristic indicators for backdoors/malicious behavior
+        self.suspicious_indicators = {
+            "Reverse Shell / Direct Socket": r"socket\.socket.*\.connect",
+            "Arbitrary Execution (exec/eval)": r"\b(exec|eval)\b",
+            "Suspicious Subprocess": r"subprocess\.(Popen|call|run)\(.*shell=True\)",
+            "Potential Base64 Obfuscation": r"=[ \t]*['\"][A-Za-z0-9+/]{4,}={0,2}['\"]"
+        }
+
+    def read_file(self):
+        try:
+            with open(self.file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            print(f"[-] Error reading file: {e}")
+            return None
+
+    def analyze_heuristics(self, content):
+        """Scans the file line by line matching known code patterns."""
+        lines = content.split('\n')
+        for line_num, line in enumerate(lines, 1):
+            for threat_name, pattern in self.suspicious_indicators.items():
+                if re.search(pattern, line):
+                    self.findings.append({
+                        "line": line_num,
+                        "threat": threat_name,
+                        "evidence": line.strip()
+                    })
+
+    def analyze_ast(self, content):
+        """Uses Abstract Syntax Tree to identify structural anomalies safely."""
+        try:
+            tree = ast.parse(content)
+            for node in ast.walk(tree):
+                # Flag dynamic code evaluation blocks structurally
+                if isinstance(node, ast.Call) and getattr(node.func, 'id', None) in ['eval', 'exec']:
+                    self.findings.append({
+                        "line": node.lineno,
+                        "threat": "AST Flag: Dynamic Execution Node Found",
+                        "evidence": f"Use of built-in function: {node.func.id}"
+                    })
+        except SyntaxError:
+            print("[-] Unable to parse AST due to syntax errors in the target script.")
+
+    def generate_report(self):
+        """Summarizes findings and assigns a risk classification."""
+        print(f"\n[+] AI Agent Report for: {self.file_path}")
+        print("=" * 60)
+        
+        if not self.findings:
+            print("[✓] No suspicious backdoor indicators detected.")
+            return
+
+        print(f"[!] Warning: {len(self.findings)} potential anomalies identified:\n")
+        for issue in self.findings:
+            print(f" -> Line {issue['line']}: [{issue['threat']}]")
+            print(f"    Code: {issue['evidence']}")
+            print("-" * 40)
+            
+        # Mock Agent Logic for Severity Classification
+        if len(self.findings) > 2:
+            print("\n[Risk Assessment] CRITICAL: Multiple critical indicators found. Script requires isolation.")
+        else:
+            print("\n[Risk Assessment] MEDIUM: Review recommended for specific code blocks.")
+
+# Execution entry point
+if __name__ == "__main__":
+    # Initialize the agent on our test target
+    agent = SecurityReviewAgent("test_script.py")
+    
+    file_content = agent.read_file()
+    if file_content:
+        agent.analyze_heuristics(file_content)
+        agent.analyze_ast(file_content)
+        agent.generate_report()
