@@ -1,0 +1,2 @@
+Its a concept for a static analysis tool that acts as a basic "Security Code Review Agent." In practice, AI agents designed for vulnerability detection combine Abstract Syntax Tree (AST) parsing, regex pattern matching, and Large Language Model (LLM) APIs to analyze the intent of code.
+This sample project demonstrates a Python-based static analyzer that scans target scripts for common backdoor indicators (such as hidden network sockets, obfuscated code execution, or unauthorized subprocess calls).
